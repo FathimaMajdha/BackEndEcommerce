@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using EcommerceApp.Models;
+using System.Reflection.Emit;
 
 namespace EcommerceApp.Data
 {
@@ -71,7 +72,26 @@ namespace EcommerceApp.Data
 
             mb.Entity<Order>()
                 .Property(o => o.TotalAmount)
-                .HasPrecision(18, 2);
+            .HasPrecision(18, 2);
+
+            mb.Entity<User>()
+    .HasMany(u => u.CartItems)
+    .WithOne(c => c.User)
+    .HasForeignKey(c => c.UserId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<User>()
+                .HasMany(u => u.WishlistItems)
+                .WithOne(w => w.User)
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<User>()
+                .HasMany(u => u.Orders)
+                .WithOne(o => o.User)
+                .HasForeignKey(o => o.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
     }
 }

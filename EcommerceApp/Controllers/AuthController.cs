@@ -62,5 +62,24 @@ namespace EcommerceApp.Controllers
 
             return Ok("Admin login successful");
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            var user = await _context.Users
+                .Include(u => u.CartItems)
+                .Include(u => u.WishlistItems)
+                .Include(u => u.Orders)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+                return NotFound("User not found");
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return Ok("User and related data deleted successfully");
+        }
+
     }
 }
