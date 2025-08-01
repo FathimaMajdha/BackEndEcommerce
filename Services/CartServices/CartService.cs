@@ -68,7 +68,8 @@ namespace BackendProject.Services.CartServices
 
             if (cart == null)
             {
-                cart = new Cart { UserId = dto.UserId, CartItems = new List<CartItem>() };
+                cart = new Cart { UserId = dto.UserId };
+
                 _context.Carts.Add(cart);
             }
 
@@ -79,11 +80,12 @@ namespace BackendProject.Services.CartServices
             }
             else
             {
-                cart.CartItems.Add(new CartItem
+                cart.CartItems.Add(new Models.CartItem
                 {
                     ProductId = dto.ProductId,
                     Quantity = dto.Quantity
                 });
+
             }
 
             await _context.SaveChangesAsync();

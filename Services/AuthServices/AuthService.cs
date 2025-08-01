@@ -25,85 +25,114 @@ namespace BackendProject.Services.AuthServices
 
         public async Task<ApiResponse<string>> Register(UserRegisterDto dto)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+            try
             {
-                return ApiResponse<string>.FailureResponse("Email already exists");
+                if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+                {
+                    return ApiResponse<string>.FailureResponse("Email already exists");
+                }
+
+                var user = new User
+                {
+                    Name = dto.Name,
+                    Email = dto.Email,
+                    Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                    Role = "User"
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                return ApiResponse<string>.SuccessResponse("User registered successfully");
             }
-
-            var user = new User
+            catch (Exception ex)
             {
-                Name = dto.Name,
-                Email = dto.Email,
-                Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Role = "User"
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return ApiResponse<string>.SuccessResponse("User registered successfully");
+                return ApiResponse<string>.FailureResponse($"Registration failed: {ex.Message}");
+            }
         }
 
         public async Task<ApiResponse<object>> Login(UserLoginDto dto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
+            try
             {
-                return ApiResponse<object>.FailureResponse("Invalid credentials");
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+                if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
+                {
+                    return ApiResponse<object>.FailureResponse("Invalid credentials");
+                }
+
+                if (user.IsBlocked)
+                {
+                    return ApiResponse<object>.FailureResponse("User is blocked. Please contact support.");
+                }
+
+                var token = GenerateJwtToken(user);
+
+                var userDto = new UserResponseDto
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    Email = user.Email,
+                    Role = user.Role
+                };
+
+                var result = new
+                {
+                    token,
+                    user = userDto
+                };
+
+                return ApiResponse<object>.SuccessResponse(result, "Login successful");
             }
-
-            if (user.IsBlocked)
+            catch (Exception ex)
             {
-                return ApiResponse<object>.FailureResponse("User is blocked. Please contact support.");
+                return ApiResponse<object>.FailureResponse($"Login failed: {ex.Message}");
             }
-
-            var token = GenerateJwtToken(user);
-
-            var userDto = new UserResponseDto
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role
-            };
-
-            var result = new
-            {
-                token,
-                user = userDto
-            };
-
-            return ApiResponse<object>.SuccessResponse(result, "Login successful");
         }
-
 
         public async Task<ApiResponse<UserResponseDto>> GetCurrentUser()
         {
-            var userIdStr = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdStr))
-                return ApiResponse<UserResponseDto>.FailureResponse("Unauthorized");
-
-            if (!int.TryParse(userIdStr, out int userId))
-                return ApiResponse<UserResponseDto>.FailureResponse("Invalid user identifier");
-
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-                return ApiResponse<UserResponseDto>.FailureResponse("User not found");
-
-            var userResponse = new UserResponseDto
+            try
             {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role
-            };
+                var userIdStr = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdStr))
+                    return ApiResponse<UserResponseDto>.FailureResponse("Unauthorized");
 
-            return ApiResponse<UserResponseDto>.SuccessResponse(userResponse, "User retrieved successfully");
+                if (!int.TryParse(userIdStr, out int userId))
+                    return ApiResponse<UserResponseDto>.FailureResponse("Invalid user identifier");
+
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    return ApiResponse<UserResponseDto>.FailureResponse("User not found");
+
+                var userResponse = new UserResponseDto
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    Email = user.Email,
+                    Role = user.Role
+                };
+
+                return ApiResponse<UserResponseDto>.SuccessResponse(userResponse, "User retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<UserResponseDto>.FailureResponse($"Error retrieving user: {ex.Message}");
+            }
         }
 
         private string GenerateJwtToken(User user)
         {
+            var jwtKey = _configuration["Jwt:Key"];
+            var jwtIssuer = _configuration["Jwt:Issuer"];
+            var jwtAudience = _configuration["Jwt:Audience"];
+
+            if (string.IsNullOrWhiteSpace(jwtKey) || string.IsNullOrWhiteSpace(jwtIssuer) || string.IsNullOrWhiteSpace(jwtAudience))
+            {
+                throw new Exception("JWT configuration is missing.");
+            }
+
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -111,12 +140,12 @@ namespace BackendProject.Services.AuthServices
                 new Claim(ClaimTypes.Name, user.Name)
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: jwtIssuer,
+                audience: jwtAudience,
                 claims: claims,
                 expires: DateTime.UtcNow.AddDays(3),
                 signingCredentials: creds

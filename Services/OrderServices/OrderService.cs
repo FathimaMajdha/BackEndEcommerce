@@ -181,7 +181,7 @@ namespace BackendProject.Services.OrderServices
                     existingOrder.PaymentStatus = "Paid";
 
                    
-                    existingOrder.DeliveryStatus = "Successfull";
+                    existingOrder.DeliveryStatus = "Order placed";
                 }
 
 

@@ -4,6 +4,9 @@ using BackendProject.Models;
 using BackendProject.Services.CloudinaryServices;
 using Microsoft.EntityFrameworkCore;
 using BackendProject.ApiResponse;
+using System.Linq;
+using AutoMapper.Internal;
+
 
 namespace BackendProject.Services.AdminServices
 {
@@ -22,7 +25,7 @@ namespace BackendProject.Services.AdminServices
         {
             var users = await _context.Users
                 .Include(u => u.Orders)
-                .Where(u => u.Role != "admin" && !u.IsBlocked)
+                .Where(u => u.Role != "Admin" && !u.IsBlocked)
                 .ToListAsync();
 
             var allOrders = await _context.Orders
@@ -32,6 +35,37 @@ namespace BackendProject.Services.AdminServices
                 .ToListAsync();
 
             var totalRevenue = allOrders.Sum(o => o.TotalAmount);
+
+            // Recent activities (users and orders)
+            var recentUserRegistrations = await _context.Users
+      .Where(u => u.Role != "Admin" && !u.IsBlocked)
+      .OrderByDescending(u => u.CreatedAt)
+      .Select(u => new RecentActivity
+      {
+          Timestamp = (DateTime)u.CreatedAt,
+          Message = $"New user registered: {u.Name}"
+      })
+      .Take(5)
+      .ToListAsync();
+
+            var recentOrders = await _context.Orders
+                .OrderByDescending(o => o.OrderDate)
+                .Select(o => new RecentActivity
+                {
+                    Timestamp = o.OrderDate,
+                    Message = $"New order placed by user ID {o.UserId}, Amount: ₹{o.TotalAmount:F2}"
+                })
+                .Take(5)
+                .ToListAsync();
+
+
+            var recentActivities = recentUserRegistrations
+    .Concat(recentOrders)
+    .OrderByDescending(a => a.Timestamp)
+    .Take(10)
+    .ToList();
+
+
 
             var overview = new
             {
@@ -48,7 +82,7 @@ namespace BackendProject.Services.AdminServices
                 revenueByUser = users
                     .Where(u => u.Orders != null && u.Orders.Any())
                     .Select(u => new {
-                        name = u.Username,
+                        name = u.Name,
                         value = u.Orders.Sum(o => o.TotalAmount)
                     }).ToList(),
                 topProducts = allOrders
@@ -58,10 +92,13 @@ namespace BackendProject.Services.AdminServices
                     .Select(g => new {
                         title = g.Key,
                         qty = g.Sum(oi => oi.Quantity)
-                    }).OrderByDescending(p => p.qty).Take(5).ToList(),
+                    })
+                    .OrderByDescending(p => p.qty)
+                    .Take(5)
+                    .ToList(),
                 ordersPerUser = users
                     .Select(u => new {
-                        name = u.Username,
+                        name = u.Name,
                         orders = u.Orders?.Count ?? 0
                     }).ToList(),
                 dailyRevenueTrend = allOrders
@@ -70,11 +107,13 @@ namespace BackendProject.Services.AdminServices
                     .Select(g => new {
                         date = g.Key.ToString("dd-MM-yyyy"),
                         total = g.Sum(o => o.TotalAmount)
-                    }).ToList()
+                    }).ToList(),
+                recentActivities
             };
 
             return ApiResponse<object>.SuccessResponse(overview);
         }
+
 
         public async Task<ApiResponse<List<UserOrderDto>>> GetAllUsersAsync()
         {
@@ -88,7 +127,7 @@ namespace BackendProject.Services.AdminServices
             var result = users.Select(user => new UserOrderDto
             {
                 Id = user.Id,
-                Name = user.Username,
+                Name = user.Name,
                 Email = user.Email,
                 Password = user.Password,
                 IsBlocked = user.IsBlocked, 
@@ -382,7 +421,7 @@ namespace BackendProject.Services.AdminServices
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 keyword = keyword.ToLower();
-                query = query.Where(u => u.Username.ToLower().StartsWith(keyword));
+                query = query.Where(u => u.Name.ToLower().StartsWith(keyword));
             }
 
             var totalCount = await query.CountAsync();
@@ -396,7 +435,7 @@ namespace BackendProject.Services.AdminServices
             var userDtos = users.Select(user => new UserOrderDto
             {
                 Id = user.Id,
-                Name = user.Username,
+                Name = user.Name,
                 Email = user.Email,
                 Password = user.Password,
                 IsBlocked = user.IsBlocked,

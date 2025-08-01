@@ -3,11 +3,14 @@ using BackendProject.Services.AdminServices;
 using BackendProject.Dto;
 using BackendProject.ApiResponse;
 using BackendProject.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BackendProject.Controllers
 {
+   
     [ApiController]
     [Route("api/[controller]")]
+    
     public class AdminController : ControllerBase
     {
         private readonly IAdminService _adminService;
@@ -18,6 +21,7 @@ namespace BackendProject.Controllers
         }
 
         [HttpGet("overview")]
+       
         public async Task<IActionResult> GetOverview()
         {
             var response = await _adminService.GetDashboardOverviewAsync();
@@ -52,6 +56,7 @@ namespace BackendProject.Controllers
                 ? Ok(response)
                 : NotFound(response);
         }
+
 
         
         [HttpGet("products")]
