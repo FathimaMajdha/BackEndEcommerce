@@ -9,4 +9,5 @@ public class Product
     public decimal Price { get; set; }
     public int Quantity { get; set; }
     public int Category { get; set; } = default!;
+    public object ProductName { get; internal set; }
 }

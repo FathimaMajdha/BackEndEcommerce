@@ -48,7 +48,7 @@ namespace BackendProject.Services.AdminServices
                 revenueByUser = users
                     .Where(u => u.Orders != null && u.Orders.Any())
                     .Select(u => new {
-                        name = u.Name,
+                        name = u.Username,
                         value = u.Orders.Sum(o => o.TotalAmount)
                     }).ToList(),
                 topProducts = allOrders
@@ -61,7 +61,7 @@ namespace BackendProject.Services.AdminServices
                     }).OrderByDescending(p => p.qty).Take(5).ToList(),
                 ordersPerUser = users
                     .Select(u => new {
-                        name = u.Name,
+                        name = u.Username,
                         orders = u.Orders?.Count ?? 0
                     }).ToList(),
                 dailyRevenueTrend = allOrders
@@ -88,7 +88,7 @@ namespace BackendProject.Services.AdminServices
             var result = users.Select(user => new UserOrderDto
             {
                 Id = user.Id,
-                Name = user.Name,
+                Name = user.Username,
                 Email = user.Email,
                 Password = user.Password,
                 IsBlocked = user.IsBlocked, 
@@ -101,7 +101,7 @@ namespace BackendProject.Services.AdminServices
                     Items = order.OrderItems?.Select(item => new OrderItemDto
                     {
                         ProductId = item.ProductId,
-                        ProductName = item.Product?.ProductName ?? "Unknown",
+                        ProductName = (string)(item.Product?.ProductName ?? "Unknown"),
                         Description = item.Product?.Description ?? string.Empty,
                         ImageUrl = item.Product?.ImageUrl,
                         Quantity = item.Quantity
@@ -382,7 +382,7 @@ namespace BackendProject.Services.AdminServices
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 keyword = keyword.ToLower();
-                query = query.Where(u => u.Name.ToLower().StartsWith(keyword));
+                query = query.Where(u => u.Username.ToLower().StartsWith(keyword));
             }
 
             var totalCount = await query.CountAsync();
@@ -396,7 +396,7 @@ namespace BackendProject.Services.AdminServices
             var userDtos = users.Select(user => new UserOrderDto
             {
                 Id = user.Id,
-                Name = user.Name,
+                Name = user.Username,
                 Email = user.Email,
                 Password = user.Password,
                 IsBlocked = user.IsBlocked,
@@ -409,7 +409,7 @@ namespace BackendProject.Services.AdminServices
                     Items = order.OrderItems?.Select(item => new OrderItemDto
                     {
                         ProductId = item.ProductId,
-                        ProductName = item.Product?.ProductName ?? "Unknown",
+                        ProductName = (string)(item.Product?.ProductName ?? "Unknown"),
                         Description = item.Product?.Description ?? string.Empty,
                         ImageUrl = item.Product?.ImageUrl,
                         Quantity = item.Quantity

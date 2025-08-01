@@ -183,3 +183,4 @@ C:\Users\majdha\source\repos\BackendProject\BackendProject\obj\Debug\net8.0\Back
 C:\Users\majdha\source\repos\BackendProject\BackendProject\obj\Debug\net8.0\ref\BackendProject.dll
 C:\Users\majdha\source\repos\BackendProject\BackendProject\bin\Debug\net8.0\BouncyCastle.Crypto.dll
 C:\Users\majdha\source\repos\BackendProject\BackendProject\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
+C:\Users\majdha\source\repos\BackendProject\BackendProject\obj\Debug\net8.0\BackendProject.sourcelink.json
